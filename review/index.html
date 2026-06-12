@@ -126,6 +126,12 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
 <p class="note">下面把指令拆成 6 个方面，请逐项判断；选「需要修改」时请写明您的建议。</p>
 <div id="pquestions"></div>
 
+<div class="card" style="margin-top:14px">
+  <b style="font-size:13.5px">对这段指令的其他意见（选填）</b>
+  <p class="note" style="margin:2px 0 6px">以上 6 个方面之外，您觉得这段指令还有什么应增、应删、应改的地方？（如措辞、缺失的注意事项等）</p>
+  <textarea id="promptsuggest" placeholder="选填" style="min-height:60px" oninput="saveField('prompt_suggestion',this.value)"></textarea>
+</div>
+
 <h2>请重点判断的 5 个边界问题</h2>
 <div class="screenbox" style="margin:0 0 12px">
   <div class="sbt">🛡 背景：除上面的指令外，还有一道程序化安全筛查</div>
@@ -140,9 +146,9 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
 <div id="questions"></div>
 
 <div class="card" style="margin-top:14px">
-  <b style="font-size:13.5px">对这段指令的其他意见（选填）</b>
-  <p class="note" style="margin:2px 0 6px">以上问题之外，您觉得这段指令还有什么应增、应删、应改的地方？（如措辞、缺失的注意事项等）</p>
-  <textarea id="promptsuggest" placeholder="选填" style="min-height:60px" oninput="saveField('prompt_suggestion',this.value)"></textarea>
+  <b style="font-size:13.5px">对安全边界的其他意见（选填）</b>
+  <p class="note" style="margin:2px 0 6px">以上 5 个边界问题之外，您觉得安全规则还有什么需要补充或调整的？</p>
+  <textarea id="boundarysuggest" placeholder="选填" style="min-height:60px" oninput="saveField('boundary_suggestion',this.value)"></textarea>
 </div>
 
 <h2>试用样例（3 例真实输入与输出）</h2>
@@ -217,6 +223,7 @@ function render(){
   document.getElementById('fz-no').className = s.freeze===false?'sel-no':'';
   document.getElementById('overall').value = s.overall||'';
   document.getElementById('promptsuggest').value = s.prompt_suggestion||'';
+  document.getElementById('boundarysuggest').value = s.boundary_suggestion||'';
 }
 function setQ(id,v){ const s=load(); s[id]=s[id]||{}; s[id].verdict=v; save(s); render(); }
 function setQNote(id,v){ const s=load(); s[id]=s[id]||{}; s[id].note=v; save(s); }
@@ -244,6 +251,7 @@ function exportMD(){
   for(const q of D.questions){ const v=s[q.id]||{};
     md += `### ${q.name} — ${vd(v.verdict)}\n${v.note?v.note+'\n':''}\n`; }
   md += `## 对指令的其他意见\n\n${s.prompt_suggestion||'（无）'}\n\n`;
+  md += `## 对安全边界的其他意见\n\n${s.boundary_suggestion||'（无）'}\n\n`;
   md += `## 样例评价\n\n`;
   let anyCase=false;
   D.cases.forEach((c,i)=>{ const v=(s.cases||{})[c.cycle_id]||{};
@@ -267,8 +275,9 @@ function download(name, content, type){
 function orderFeedback(s){
   const o = {};
   for(const q of D.pquestions){ if(s[q.id]) o[q.id] = s[q.id]; }
-  for(const q of D.questions){ if(s[q.id]) o[q.id] = s[q.id]; }
   o.prompt_other_comments = s.prompt_suggestion || '';
+  for(const q of D.questions){ if(s[q.id]) o[q.id] = s[q.id]; }
+  o.boundary_other_comments = s.boundary_suggestion || '';
   const cases = {};
   D.cases.forEach((c,i)=>{ const v=(s.cases||{})[c.cycle_id];
     if(v && (v.flag||v.note)) cases['样例'+(i+1)+'_'+c.cycle_id] = v; });
@@ -290,6 +299,7 @@ async function submitToServer(){
   const s = load();
   // sync textareas that may not have fired onchange yet
   s.prompt_suggestion = document.getElementById('promptsuggest').value.trim() || s.prompt_suggestion;
+  s.boundary_suggestion = document.getElementById('boundarysuggest').value.trim() || s.boundary_suggestion;
   s.overall = document.getElementById('overall').value.trim() || s.overall;
   save(s);
   const missing = D.pquestions.filter(q=>!(s[q.id]||{}).verdict).length
