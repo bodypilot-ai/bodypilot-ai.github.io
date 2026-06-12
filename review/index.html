@@ -82,7 +82,7 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
 <header>
   <h1>BodyPilot · 基础 Prompt 临床审查</h1><span class="tv">指令版本 v3-2026-06-12 · 定稿前审查</span>
   <span style="flex:1"></span>
-  <span class="rater">审查人 <input id="rater" placeholder="姓名/工号"></span>
+  <span class="rater">审查人 <input id="rater" placeholder="姓名"></span>
   <button onclick="submitToServer()" class="primary" id="submitbtn" style="display:none">提交反馈</button>
   <button onclick="exportMD()" class="primary" id="exportbtn">导出反馈</button>
   <button onclick="exportJSON()" id="jsonbtn">备份 JSON</button>
@@ -283,7 +283,7 @@ if(SUPA.url){
 }
 async function submitToServer(){
   const r = document.getElementById('rater').value.trim();
-  if(!r){ alert('请先在右上角填写审查人姓名/工号'); return; }
+  if(!r){ alert('请先在右上角填写审查人姓名'); return; }
   const s = load();
   // sync textareas that may not have fired onchange yet
   s.prompt_suggestion = document.getElementById('promptsuggest').value.trim() || s.prompt_suggestion;
