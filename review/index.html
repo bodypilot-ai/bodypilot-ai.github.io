@@ -120,11 +120,6 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
   <p style="margin:4px 0 10px"><b>这是什么：</b>下面这段文字是我们每次让 AI 写建议前发给它的「工作指令」。AI 每写一份建议，都会先读这段话，再读该用户的数据，然后严格按这里规定的角色、输出格式和安全红线来写——相当于给一位新上岗营养师的岗位说明书。<b>它决定了所有建议的行为边界：这段指令写得好不好、边界划得对不对，直接影响每一份输出。</b>您后面看到的 3 个样例，就是 AI 在这段指令下写出的真实建议。</p>
   <p style="margin:0 0 6px;color:var(--acc);font-size:15px"><b>下面是这段指令的原文：</b></p>
   <div class="promptbox"><div id="bp"></div><div class="sfxsep">↓ 结尾再追加一句，按该用户打卡密度三选一，连在上文一起发给 AI ↓</div><div class="sfxbox"><div><span class="sfxk">打卡少：</span><span id="sfx-low"></span></div><div><span class="sfxk">打卡中等：</span><span id="sfx-mid"></span></div><div><span class="sfxk">打卡多：</span><span id="sfx-high"></span></div></div></div>
-  <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--line)">
-    <b style="font-size:13.5px"><span class="req">*</span> 您对这段指令的修改建议</b>
-    <p class="note" style="margin:2px 0 6px">从专业角度看，这段指令有什么应增、应删、应改的地方？（如：角色定位、内容要求、缺失的注意事项、措辞问题等。无修改意见请填"无"。）</p>
-    <textarea id="promptsuggest" placeholder="例如：应要求 AI 在 BMI≥35 时提示先就医评估…" style="min-height:64px" oninput="saveField('prompt_suggestion',this.value)"></textarea>
-  </div>
 </div>
 
 <h2>请逐项审查这段指令</h2>
@@ -143,6 +138,12 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
   <p class="note" style="margin:6px 0 0">即指令要求 AI 不越界，程序再兜底检查一遍。下面 5 个问题请您判断的，正是这两道防线的边界是否合理。</p>
 </div>
 <div id="questions"></div>
+
+<div class="card" style="margin-top:14px">
+  <b style="font-size:13.5px">对这段指令的其他意见（选填）</b>
+  <p class="note" style="margin:2px 0 6px">以上问题之外，您觉得这段指令还有什么应增、应删、应改的地方？（如措辞、缺失的注意事项等）</p>
+  <textarea id="promptsuggest" placeholder="选填" style="min-height:60px" oninput="saveField('prompt_suggestion',this.value)"></textarea>
+</div>
 
 <h2>试用样例（3 例真实输入与输出）</h2>
 <p class="note">这些是 AI 按上面那段指令、针对 3 位真实用户写出的建议（依从性低/中/高各一例，含 BMI 41.5 的极端情形）。左侧为 AI 收到的输入数据，右侧为它写出的建议。请看看写得怎么样：内容是否专业、合理、可执行；如有越界或不当之处请勾选标记。您在样例中发现的共性问题，往往对应上面指令需要修改的地方。</p>
@@ -235,13 +236,14 @@ document.getElementById('rater').addEventListener('input', ()=>{
 function exportMD(){
   const s = load(); const r = document.getElementById('rater').value.trim()||'(未填)';
   const vd = v => v==='ok'?'可以':(v==='ng'?'需修改':'（未填）');
-  let md = `# 基础指令（Prompt）审查反馈\n\n- 审查人: ${r}\n- 模板版本: ${D.template_version}\n- 日期: ${new Date().toISOString().slice(0,10)}\n\n## 对基础指令的修改建议\n\n${s.prompt_suggestion||'（无）'}\n\n`;
+  let md = `# 基础指令（Prompt）审查反馈\n\n- 审查人: ${r}\n- 模板版本: ${D.template_version}\n- 日期: ${new Date().toISOString().slice(0,10)}\n\n`;
   md += `## 指令逐项审查\n\n`;
   for(const q of D.pquestions){ const v=s[q.id]||{};
     md += `### ${q.name} — ${vd(v.verdict)}\n${v.note?v.note+'\n':''}\n`; }
   md += `## 边界问题\n\n`;
   for(const q of D.questions){ const v=s[q.id]||{};
     md += `### ${q.name} — ${vd(v.verdict)}\n${v.note?v.note+'\n':''}\n`; }
+  md += `## 对指令的其他意见\n\n${s.prompt_suggestion||'（无）'}\n\n`;
   md += `## 样例评价\n\n`;
   let anyCase=false;
   D.cases.forEach((c,i)=>{ const v=(s.cases||{})[c.cycle_id]||{};
@@ -264,9 +266,9 @@ function download(name, content, type){
 // samples -> checklist -> conclusion), independent of click order
 function orderFeedback(s){
   const o = {};
-  o.prompt_suggestion = s.prompt_suggestion || '';
   for(const q of D.pquestions){ if(s[q.id]) o[q.id] = s[q.id]; }
   for(const q of D.questions){ if(s[q.id]) o[q.id] = s[q.id]; }
+  o.prompt_other_comments = s.prompt_suggestion || '';
   const cases = {};
   D.cases.forEach((c,i)=>{ const v=(s.cases||{})[c.cycle_id];
     if(v && (v.flag||v.note)) cases['样例'+(i+1)+'_'+c.cycle_id] = v; });
@@ -292,7 +294,7 @@ async function submitToServer(){
   save(s);
   const missing = D.pquestions.filter(q=>!(s[q.id]||{}).verdict).length
     + D.questions.filter(q=>!(s[q.id]||{}).verdict).length
-    + (s.freeze===undefined?1:0) + (!s.prompt_suggestion?1:0);
+    + (s.freeze===undefined?1:0);
   if(missing>0 && !confirm(`还有 ${missing} 个带 * 的项目未填写，确定现在提交吗？`)) return;
   const btn=document.getElementById('submitbtn'); btn.disabled=true; btn.textContent='提交中…';
   try{
