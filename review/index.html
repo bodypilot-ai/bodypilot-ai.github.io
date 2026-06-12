@@ -182,7 +182,7 @@ function render(){
     return `<div class="qitem"><div class="qn"><span class="req">*</span> ${esc(q.name)}</div>
       <div class="qr">${esc(q.rule)}</div><div class="qa">${esc(q.ask)}</div>
       <div class="okng">
-        <button class="${v.verdict==='ok'?'sel-ok':''}" onclick="setQ('${q.id}','ok')">目前规则 OK</button>
+        <button class="${v.verdict==='ok'?'sel-ok':''}" onclick="setQ('${q.id}','ok')">目前规则可以</button>
         <button class="${v.verdict==='ng'?'sel-ng':''}" onclick="setQ('${q.id}','ng')">需要修改</button>
       </div>
       <textarea placeholder="意见/建议的具体规则（选填，勾「需要修改」时请务必填写）" oninput="setQNote('${q.id}',this.value)">${esc(v.note||'')}</textarea></div>`;
@@ -209,7 +209,7 @@ function render(){
   document.getElementById('checklist').innerHTML = D.checklist.map(c=>{
     const v = (s.cl||{})[c.id]||{};
     return `<div class="clitem"><div class="okng">
-        <button class="${v.verdict==='ok'?'sel-ok':''}" onclick="setCL('${c.id}','ok')">OK</button>
+        <button class="${v.verdict==='ok'?'sel-ok':''}" onclick="setCL('${c.id}','ok')">可以</button>
         <button class="${v.verdict==='ng'?'sel-ng':''}" onclick="setCL('${c.id}','ng')">需修改</button></div>
       <div class="cltext"><span class="req">*</span> ${esc(c.text)}
         ${v.verdict==='ng'?`<textarea placeholder="请说明" oninput="setCLNote('${c.id}',this.value)">${esc(v.note||'')}</textarea>`:''}</div></div>`;
@@ -239,7 +239,7 @@ document.getElementById('rater').addEventListener('input', ()=>{
 
 function exportMD(){
   const s = load(); const r = document.getElementById('rater').value.trim()||'(未填)';
-  const vd = v => v==='ok'?'OK':(v==='ng'?'需修改':'（未填）');
+  const vd = v => v==='ok'?'可以':(v==='ng'?'需修改':'（未填）');
   let md = `# 基础 Prompt 审查反馈\n\n- 审查人: ${r}\n- 模板版本: ${D.template_version}\n- 日期: ${new Date().toISOString().slice(0,10)}\n\n## 对基础指令的修改建议\n\n${s.prompt_suggestion||'（无）'}\n\n## 边界问题\n\n`;
   for(const q of D.questions){ const v=s[q.id]||{};
     md += `### ${q.name} — ${vd(v.verdict)}\n${v.note?v.note+'\n':''}\n`; }
