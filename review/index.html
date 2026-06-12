@@ -209,7 +209,7 @@ function render(){
   document.getElementById('checklist').innerHTML = D.checklist.map(c=>{
     const v = (s.cl||{})[c.id]||{};
     return `<div class="clitem"><div class="okng">
-        <button class="${v.verdict==='ok'?'sel-ok':''}" onclick="setCL('${c.id}','ok')">可以</button>
+        <button class="${v.verdict==='ok'?'sel-ok':''}" onclick="setCL('${c.id}','ok')">目前规则可以</button>
         <button class="${v.verdict==='ng'?'sel-ng':''}" onclick="setCL('${c.id}','ng')">需修改</button></div>
       <div class="cltext"><span class="req">*</span> ${esc(c.text)}
         ${v.verdict==='ng'?`<textarea placeholder="请说明" oninput="setCLNote('${c.id}',this.value)">${esc(v.note||'')}</textarea>`:''}</div></div>`;
