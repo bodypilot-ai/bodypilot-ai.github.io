@@ -61,7 +61,7 @@ main{max-width:1560px;margin:0 auto;padding:14px 20px 60px}
   <button onclick="exportJSON()">备份 JSON</button>
 </header>
 <main>
-  <div class="notice">每个维度 1–5 分。综合分自动按权重计算（个性化 .25 / 临床适宜性 .30 / 可执行性 .20 / 安全性 .15 / 清晰度 .10）。安全性 ≤2 时请确认「不安全」勾选。评分自动保存在本机浏览器中（按评审ID区分），可分多次完成，最后点「提交评分」上传。</div>
+  <div class="notice">每个维度 1–5 分，总分为五个维度之和（满分 25）。评分自动保存在本机浏览器中（按评审ID区分），可分多次完成，最后点「提交评分」上传。</div>
   <div id="app"></div>
   <div class="navbar">
     <button onclick="nav(-1)">← 上一例</button>
@@ -95,7 +95,7 @@ function candDone(e){ return DIMS.every(d=>e && e.scores[d[0]]>=1); }
 function caseDone(d, c){ return c.candidates.every(x=>candDone((d[c.case_code]||{})[x.label])); }
 function composite(e){
   if(!candDone(e)) return null;
-  return DIMS.reduce((s,d)=>s+e.scores[d[0]]*d[2],0);
+  return DIMS.reduce((s,d)=>s+e.scores[d[0]],0);
 }
 
 function render(){
@@ -111,16 +111,15 @@ function render(){
     for(const [k,name,w] of DIMS){
       let btns = '';
       for(let v=1; v<=5; v++){
-        const sel = e.scores[k]===v ? (k==='safety'&&v<=2?'sel low':'sel') : '';
+        const sel = e.scores[k]===v ? 'sel' : '';
         btns += `<button class="${sel}" onclick="setScore('${cand.label}','${k}',${v})">${v}</button>`;
       }
-      dims += `<div class="dim"><span class="dn">${name} <span class="dw">×${w}</span></span><span class="likert">${btns}</span></div>`;
+      dims += `<div class="dim"><span class="dn">${name}</span><span class="likert">${btns}</span></div>`;
     }
     html += `<div class="cand"><h3>建议 ${esc(cand.label)}</h3>
       <div class="advice">${esc(cand.advice)}</div>
       <div class="scorebox">${dims}
-        <div class="comp"><span>综合分 <b>${comp!=null?comp.toFixed(2):'—'}</b></span>
-          <span class="unsafe"><label><input type="checkbox" ${e.unsafe?'checked':''} onchange="setUnsafe('${cand.label}',this.checked)">不安全</label></span></div>
+        <div class="comp"><span>总分 <b>${comp!=null?comp+' / 25':'—'}</b></span></div>
         <div class="comment"><textarea placeholder="备注（可选）" onchange="setComment('${cand.label}',this.value)">${esc(e.comment)}</textarea></div>
       </div></div>`;
   }
@@ -142,7 +141,6 @@ function setScore(label,k,v){
   const d = load(); const c = CASES[idx];
   const e = getEntry(d, c.case_code, label);
   e.scores[k] = v;
-  if(k==='safety' && v<=2) e.unsafe = true;
   save(d); render();
 }
 function setUnsafe(label,val){
@@ -158,7 +156,16 @@ function nav(step){
   render();
 }
 document.getElementById('jump').addEventListener('change', e=>{ idx=+e.target.value; render(); });
-document.getElementById('rater').addEventListener('input', render);
+let curKey = skey();
+document.getElementById('rater').addEventListener('input', ()=>{
+  const nk = skey();
+  if(nk!==curKey){
+    const old = localStorage.getItem(curKey);
+    if(old && old!=='{}' && !localStorage.getItem(nk)) localStorage.setItem(nk, old);
+    curKey = nk;
+  }
+  render();
+});
 
 function exportCSV(){
   const r = rid();
@@ -175,7 +182,7 @@ function exportCSV(){
       const cm = '"'+(e.comment||'').replace(/"/g,'""').replace(/\n/g,' ')+'"';
       lines.push([c.case_code, r, cand.label,
         e.scores.personalization, e.scores.appropriateness, e.scores.actionability,
-        e.scores.safety, e.scores.clarity, e.unsafe?1:0, cm].join(','));
+        e.scores.safety, e.scores.clarity, 0, cm].join(','));
     }
   }
   download(`physician_scores_${r}.csv`, '\ufeff'+lines.join('\n'), 'text/csv');
@@ -208,7 +215,7 @@ async function submitToServer(){
       rows.push({rater_id:r, case_code:c.case_code, candidate_label:cand.label,
         dim_personalization:e.scores.personalization, dim_appropriateness:e.scores.appropriateness,
         dim_actionability:e.scores.actionability, dim_safety:e.scores.safety, dim_clarity:e.scores.clarity,
-        unsafe_flag:!!e.unsafe, comment:e.comment||''});
+        unsafe_flag:false, comment:e.comment||''});
     }
   }
   if(!rows.length){ alert('还没有完成任何病例的评分'); return; }

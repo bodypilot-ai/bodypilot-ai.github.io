@@ -67,7 +67,9 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
 .clitem{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px dashed var(--line)}
 .clitem:last-child{border-bottom:none}
 .clitem .cltext{flex:1}
-.freeze{display:flex;gap:10px;align-items:center;margin:10px 0}
+.freeze{margin:10px 0}
+.freeze-btns{display:flex;gap:10px;margin-top:8px}
+.freeze-btns button{padding:8px 22px;font-size:13.5px}
 .freeze button.sel-yes{background:#dcfce7;border-color:#86efac;color:#166534;font-weight:700}
 .freeze button.sel-no{background:#fee2e2;border-color:#fca5a5;color:#991b1b;font-weight:700}
 .io::-webkit-scrollbar{width:5px}.io::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
@@ -146,9 +148,13 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
 <h2>核对清单与结论</h2>
 <div class="card" id="checklist"></div>
 <div class="card">
-  <div class="freeze"><b><span class="req">*</span> 总体结论：这套指令可以定稿、用于正式实验了吗？</b>
-    <button id="fz-yes" onclick="setFreeze(true)">可以定稿</button>
-    <button id="fz-no" onclick="setFreeze(false)">需修改后再审</button></div>
+  <div class="freeze">
+    <b><span class="req">*</span> 总体结论：这套指令可以定稿、用于正式实验了吗？</b>
+    <div class="freeze-btns">
+      <button id="fz-yes" onclick="setFreeze(true)">可以定稿</button>
+      <button id="fz-no" onclick="setFreeze(false)">需修改后再审</button>
+    </div>
+  </div>
   <textarea id="overall" placeholder="必须修改的内容 / 其他意见（自由填写）" style="min-height:70px" onchange="saveField('overall',this.value)"></textarea>
 </div>
 
@@ -216,7 +222,16 @@ function setCase(cid,k,v){ const s=load(); s.cases=s.cases||{}; s.cases[cid]=s.c
 function setCL(id,v){ const s=load(); s.cl=s.cl||{}; s.cl[id]=s.cl[id]||{}; s.cl[id].verdict=v; save(s); render(); }
 function setCLNote(id,v){ const s=load(); s.cl=s.cl||{}; s.cl[id]=s.cl[id]||{}; s.cl[id].note=v; save(s); }
 function setFreeze(v){ const s=load(); s.freeze=v; save(s); render(); }
-document.getElementById('rater').addEventListener('input', render);
+let curKey = skey();
+document.getElementById('rater').addEventListener('input', ()=>{
+  const nk = skey();
+  if(nk!==curKey){
+    const old = localStorage.getItem(curKey);
+    if(old && old!=='{}' && !localStorage.getItem(nk)) localStorage.setItem(nk, old);
+    curKey = nk;
+  }
+  render();
+});
 
 function exportMD(){
   const s = load(); const r = document.getElementById('rater').value.trim()||'(未填)';
@@ -254,6 +269,10 @@ async function submitToServer(){
   const r = document.getElementById('rater').value.trim();
   if(!r){ alert('请先在右上角填写审查人姓名/工号'); return; }
   const s = load();
+  // sync textareas that may not have fired onchange yet
+  s.prompt_suggestion = document.getElementById('promptsuggest').value.trim() || s.prompt_suggestion;
+  s.overall = document.getElementById('overall').value.trim() || s.overall;
+  save(s);
   const missing = D.questions.filter(q=>!(s[q.id]||{}).verdict).length
     + D.checklist.filter(c=>!((s.cl||{})[c.id]||{}).verdict).length
     + (s.freeze===undefined?1:0) + (!s.prompt_suggestion?1:0);
