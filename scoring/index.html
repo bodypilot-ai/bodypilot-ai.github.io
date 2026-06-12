@@ -58,7 +58,7 @@ main{max-width:1560px;margin:0 auto;padding:14px 20px 60px}
   <select id="jump"></select>
   <button onclick="submitToServer()" class="primary" id="submitbtn" style="display:none">提交评分</button>
   <button onclick="exportCSV()" class="primary" id="exportbtn">导出 CSV</button>
-  <button onclick="exportJSON()">备份 JSON</button>
+  <button onclick="exportJSON()" id="jsonbtn">备份 JSON</button>
 </header>
 <main>
   <div class="notice">每个维度 1–5 分，总分为五个维度之和（满分 25）。评分自动保存在本机浏览器中（按评审ID区分），可分多次完成，最后点「提交评分」上传。</div>
@@ -120,7 +120,7 @@ function render(){
       <div class="advice">${esc(cand.advice)}</div>
       <div class="scorebox">${dims}
         <div class="comp"><span>总分 <b>${comp!=null?comp+' / 25':'—'}</b></span></div>
-        <div class="comment"><textarea placeholder="备注（可选）" onchange="setComment('${cand.label}',this.value)">${esc(e.comment)}</textarea></div>
+        <div class="comment"><textarea placeholder="备注（可选）" oninput="setComment('${cand.label}',this.value)">${esc(e.comment)}</textarea></div>
       </div></div>`;
   }
   html += '</div>';
@@ -199,7 +199,8 @@ function download(name, content, type){
 const SUPA = {url:'https://wmacfrwnkaobqebzdnze.supabase.co', key:'sb_publishable_0d2Fr-V87t1HLqgq9PN-xA_WFRZHtvT'};
 if(SUPA.url){
   document.getElementById('submitbtn').style.display='';
-  const eb=document.getElementById('exportbtn'); eb.classList.remove('primary'); eb.textContent='导出 CSV（备用）';
+  document.getElementById('exportbtn').style.display='none';
+  document.getElementById('jsonbtn').style.display='none';
 }
 async function submitToServer(){
   const r = rid();
