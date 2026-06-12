@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BodyPilot · 基础 Prompt 临床审查</title>
+<title>BodyPilot · 基础指令（Prompt）临床审查</title>
 <style>
 :root{--bg:#f5f6f8;--card:#fff;--ink:#1f2430;--muted:#6b7280;--line:#e5e7eb;--acc:#2563eb;--ok:#059669;--warn:#b45309;--bad:#dc2626;--accbg:#eff6ff}
 *{box-sizing:border-box}
@@ -80,7 +80,7 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
 </head>
 <body>
 <header>
-  <h1>BodyPilot · 基础 Prompt 临床审查</h1><span class="tv">指令版本 v3-2026-06-12 · 定稿前审查</span>
+  <h1>BodyPilot · 基础指令（Prompt）临床审查</h1><span class="tv">指令版本 v3-2026-06-12 · 定稿前审查</span>
   <span style="flex:1"></span>
   <span class="rater">审查人 <input id="rater" placeholder="姓名"></span>
   <button onclick="submitToServer()" class="primary" id="submitbtn" style="display:none">提交（完成后请点击）</button>
@@ -90,7 +90,7 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
 <main>
 
 <div class="card task">
-  <b>感谢您拨冗参与本次审查！</b><br><b>您的任务（约 30-45 分钟）：</b>审查我们给 AI 模型的「基础指令」（prompt）及其安全边界是否合理，并通过 3 个真实样例看看 AI 按这套指令写出的建议水平如何。
+  <b>感谢您拨冗参与本次审查！</b><br><b>您的任务（约 30-45 分钟）：</b>审查我们给 AI 模型的「基础指令（Prompt）」及其安全边界是否合理，并通过 3 个真实样例看看 AI 按这套指令写出的建议水平如何。
   具体来说：阅读下方的指令原文与安全规则、提出修改建议 → 回答 5 个边界问题 → 浏览样例（输入与 AI 输出并排）→ 勾选核对清单并给出"是否可以定稿"的结论。
   您的意见将直接用于修订该指令；指令定稿后才会开始正式实验。
 </div>
@@ -102,7 +102,7 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
     <div class="flow">
       <div class="fbox"><div class="ft">① 用户数据</div><div class="fd">InBody 体成分（体重/BMI/体脂率/骨骼肌量/基代）＋本期饮食/运动打卡记录</div></div>
       <div class="farrow">↓</div>
-      <div class="fbox hl"><div class="ft">② LLM + 基础 Prompt</div><div class="fd">本页审查对象：角色设定、输出格式、安全边界等指令</div></div>
+      <div class="fbox hl"><div class="ft">② LLM + 基础指令（Prompt）</div><div class="fd">本页审查对象：角色设定、输出格式、安全边界等指令</div></div>
       <div class="farrow">↓</div>
       <div class="fbox"><div class="ft">③ 四段式建议</div><div class="fd">①总体评估 ②饮食建议 ③运动建议 ④下一周期目标（300-450字）</div></div>
       <div class="farrow">↓</div>
@@ -115,7 +115,7 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
   <p class="note" style="margin:10px 0 0">研究目的是检验"给模型参考该用户已完成周期的信息，能否让建议更个性化"——但这与您本次的任务无关；您只需审查所有情形共用的基础指令（②）。</p>
 </div>
 
-<h2>基础 Prompt 原文（逐字）</h2>
+<h2>基础指令（Prompt）原文（逐字）</h2>
 <div class="card">
   <p style="margin:4px 0 10px"><b>这是什么：</b>下面这段文字是我们每次让 AI 写建议前发给它的「工作指令」。AI 每写一份建议，都会先读这段话，再读该用户的数据，然后严格按这里规定的角色、输出格式和安全红线来写——相当于给一位新上岗营养师的岗位说明书。<b>它决定了所有建议的行为边界：这段指令写得好不好、边界划得对不对，直接影响每一份输出。</b>您后面看到的 3 个样例，就是 AI 在这段指令下写出的真实建议。</p>
   <p style="margin:0 0 6px;color:var(--acc);font-size:15px"><b>下面是这段指令的原文：</b></p>
@@ -148,7 +148,7 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
 <div class="card" id="checklist"></div>
 <div class="card">
   <div class="freeze">
-    <b><span class="req">*</span> 总体结论：这套指令可以定稿、用于正式实验了吗？</b>
+    <b><span class="req">*</span> 总体结论：这套基础指令（Prompt）可以定稿、用于正式实验了吗？</b>
     <div class="freeze-btns">
       <button id="fz-yes" onclick="setFreeze(true)">可以定稿</button>
       <button id="fz-no" onclick="setFreeze(false)">需修改后再审</button>
@@ -240,7 +240,7 @@ document.getElementById('rater').addEventListener('input', ()=>{
 function exportMD(){
   const s = load(); const r = document.getElementById('rater').value.trim()||'(未填)';
   const vd = v => v==='ok'?'可以':(v==='ng'?'需修改':'（未填）');
-  let md = `# 基础 Prompt 审查反馈\n\n- 审查人: ${r}\n- 模板版本: ${D.template_version}\n- 日期: ${new Date().toISOString().slice(0,10)}\n\n## 对基础指令的修改建议\n\n${s.prompt_suggestion||'（无）'}\n\n## 边界问题\n\n`;
+  let md = `# 基础指令（Prompt）审查反馈\n\n- 审查人: ${r}\n- 模板版本: ${D.template_version}\n- 日期: ${new Date().toISOString().slice(0,10)}\n\n## 对基础指令的修改建议\n\n${s.prompt_suggestion||'（无）'}\n\n## 边界问题\n\n`;
   for(const q of D.questions){ const v=s[q.id]||{};
     md += `### ${q.name} — ${vd(v.verdict)}\n${v.note?v.note+'\n':''}\n`; }
   md += `## 样例评价\n\n`;
