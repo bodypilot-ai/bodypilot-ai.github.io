@@ -198,7 +198,7 @@ function render(){
         ${v.flag?'<span class="badge" style="background:#fee2e2;color:#991b1b">⚠ 已标记问题</span>':''}
         <span class="chev">▶</span></div>
       <div class="case-b">
-        <div class="half"><h4>输入（模型收到的数据）</h4><div class="io">${esc(c.context)}</div></div>
+        <div class="half"><h4>输入（模型收到的数据）</h4><div class="note" style="margin:-4px 0 6px">完整输入 = 上方基础指令（Prompt）＋ 以下用户数据</div><div class="io">${esc(c.context)}</div></div>
         <div class="half"><h4>输出（模型生成的建议）</h4><div class="io">${esc(c.advice)}</div></div>
       </div>
       <div class="case-fb">
