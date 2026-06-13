@@ -73,7 +73,6 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
   <span style="flex:1"></span>
   <button onclick="setLang()" class="lang" id="langbtn">EN</button>
   <span class="rater"><span data-k="raterlbl">审查人</span> <input id="rater" data-kph="raterph" placeholder="姓名"></span>
-  <button onclick="submitToServer()" class="primary" id="submitbtn" data-k="submit" style="display:none">提交（完成后请点击）</button>
   <button onclick="exportMD()" class="primary" id="exportbtn" data-k="export">导出反馈</button>
   <button onclick="exportJSON()" id="jsonbtn" data-k="json">备份 JSON</button>
 <div id="scrollbar" style="position:absolute;left:0;bottom:0;height:3px;background:var(--acc);width:0;transition:width .1s"></div></header>
@@ -142,7 +141,7 @@ textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:8
   <textarea id="overall" data-kph="overallph" placeholder="必须修改的内容 / 其他意见（自由填写）" style="min-height:70px" oninput="saveField('overall',this.value)"></textarea>
 </div>
 <div id="bottomsubmit" style="display:none;text-align:center;margin-top:18px">
-  <button class="primary" style="padding:12px 48px;font-size:15px" onclick="submitToServer()" data-k="submit"></button>
+  <button class="primary" id="submitbtn" style="padding:12px 48px;font-size:15px" onclick="submitToServer()" data-k="submit"></button>
   <p class="note" style="margin-top:6px" data-k="submitnote"></p>
   <p style="margin-top:14px;font-size:14px" data-k="thanks"></p>
 </div>
