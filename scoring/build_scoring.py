@@ -27,10 +27,38 @@ DIMS = [
 
 cases = json.load(open(CASES_JSON, encoding="utf-8"))  # 已是 12 例配对包（C01–C12，含 recomp/维持/减脂保肌/减脂含掉肌肉）
 
+import re as _re
+def parse_context(ctx):
+    """把 context 拆成 info(基本信息) / measure(先前vs本次的指标表) / behavior(打卡)。解析失败则 measure=None。"""
+    lines = [l.strip() for l in ctx.split("\n") if l.strip()]
+    info, behavior, measure = "", [], None
+    def toks(s):
+        r = []
+        for t in s.split("、"):
+            t = t.strip()
+            mm = _re.match(r"^([一-龥A-Za-z]+?)\s*([-\d.]+.*)$", t)
+            if mm:
+                r.append((mm.group(1).strip(), mm.group(2).strip()))
+        return r
+    for l in lines:
+        if "先前" in l and "本次" in l:
+            prefix = l[:l.find("先前")].rstrip("：: ")
+            m = _re.search(r"先前(.*?)；本次(.*)", l)
+            if m:
+                cur = dict(toks(m.group(2)))
+                rows = [{"name": k, "prev": v, "cur": cur.get(k, "")} for k, v in toks(m.group(1))]
+                measure = {"prefix": prefix, "rows": rows}
+        elif l.startswith("性别"):
+            info = l
+        else:
+            behavior.append(l)
+    return {"info": info, "measure": measure, "behavior": "　".join(behavior)}
+
 CFG = {"supaUrl": SUPA_URL, "supaKey": SUPA_KEY, "table": TABLE, "batch": BATCH,
        "dims": [{"key": k, "label": lb} for k, lb in DIMS],
-       "cases": [{"case_id": c["case_id"], "context": c["context"],
-                  "report_A": c["report_A"], "report_B": c["report_B"]} for c in cases]}
+       "cases": [dict(case_id=c["case_id"], context=c["context"],
+                      report_A=c["report_A"], report_B=c["report_B"], **parse_context(c["context"]))
+                 for c in cases]}
 
 HTML = r"""<!doctype html>
 <html lang="zh-CN"><head>
@@ -57,13 +85,21 @@ button.big{padding:11px 24px;font-size:15px}
 button:disabled{opacity:.4;cursor:not-allowed}
 .err{color:#b00020;font-size:13px;margin-top:8px}
 /* 评分区 */
-header{position:sticky;top:0;z-index:5;background:#14335c;color:#fff;padding:11px 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header{position:sticky;top:0;z-index:5;background:#2f6df6;color:#fff;padding:11px 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 header h1{font-size:16px;margin:0;color:#fff}
-.who{font-size:13px;color:#cdd8ea}
-.progress{margin-left:auto;color:#cdd8ea;font-size:13px}
+.who{font-size:13px;color:#dbe6ff}
+.progress{margin-left:auto;color:#dbe6ff;font-size:13px}
 main{max-width:1560px;margin:0 auto;padding:12px 12px 76px}
-.sectitle{background:#14335c;color:#fff;font-weight:600;font-size:13px;padding:7px 12px;border-radius:8px;margin-bottom:8px}
-.context{background:#f0f4ff;border:1px solid #d6e0ff;border-radius:10px;padding:10px 12px;white-space:pre-wrap;margin-bottom:10px;font-size:12.5px}
+.context{background:#f0f4ff;border:1px solid #d6e0ff;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.5px}
+.sectitle{color:#2f6df6;font-weight:700;font-size:13px;margin-bottom:6px}
+.cinfo{margin-bottom:4px}
+.cbeh{margin-top:6px;color:#444}
+.mcap{font-size:12px;color:var(--muted);margin:2px 0 4px}
+.mtbl{border-collapse:collapse;margin:4px 0;font-size:12.5px;background:#fff;border:1px solid #d6e0ff;border-radius:8px;overflow:hidden}
+.mtbl th,.mtbl td{padding:4px 14px;border-bottom:1px solid #eef2fb;text-align:center}
+.mtbl tr:last-child td{border-bottom:none}
+.mtbl th{background:#eaf1ff;color:#2f6df6;font-weight:600}
+.mtbl td:first-child,.mtbl th:first-child{text-align:left;font-weight:600}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:820px){.pair{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
@@ -169,7 +205,16 @@ function reportCard(c, side){
 }
 function render(){
   const c=CASES[idx]; const d=load(); const e=d[c.case_id]||{};
-  let h=`<div class="sectitle">受试者数据</div><div class="context">${escapeHtml(c.context)}</div>`;
+  let h=`<div class="context"><div class="sectitle">受试者数据</div>`;
+  if(c.info) h+=`<div class="cinfo">${escapeHtml(c.info)}</div>`;
+  if(c.measure){
+    if(c.measure.prefix) h+=`<div class="mcap">${escapeHtml(c.measure.prefix)}</div>`;
+    h+=`<table class="mtbl"><thead><tr><th>指标</th><th>先前</th><th>本次</th></tr></thead><tbody>`;
+    for(const r of c.measure.rows){ h+=`<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.prev)}</td><td>${escapeHtml(r.cur)}</td></tr>`; }
+    h+=`</tbody></table>`;
+  } else { h+=`<div style="white-space:pre-wrap">${escapeHtml(c.context)}</div>`; }
+  if(c.behavior) h+=`<div class="cbeh">${escapeHtml(c.behavior)}</div>`;
+  h+=`</div>`;
   h+=`<div class="pair">${reportCard(c,'A')}${reportCard(c,'B')}</div>`;
   h+=`<div class="pref"><b>若只能发一份给这位患者，您更倾向哪一份？</b><div class="scale">`;
   for(const [v,lb] of [['A','报告A更好'],['tie','两份相当'],['B','报告B更好']]){
