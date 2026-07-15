@@ -54,10 +54,40 @@ def parse_context(ctx):
             behavior.append(l)
     return {"info": info, "measure": measure, "behavior": "　".join(behavior)}
 
+# 打卡明细：case_id → cycle_id（KEY）→ detail_text（cycle_behavior_detail）
+_KEY = os.path.join(HERE, "..", "..", "data", "physician_eval", BATCH, "KEY_paired_do_not_share.csv")
+_DET = os.path.join(HERE, "..", "..", "data", "cycle_behavior_detail.jsonl")
+import csv as _csv
+_case2cyc = {r["case_id"]: r["cycle_id"] for r in _csv.DictReader(open(_KEY, encoding="utf-8"))}
+_detail = {}
+for _line in open(_DET, encoding="utf-8"):
+    _d = json.loads(_line)
+    if _d.get("cycle_id"):
+        _detail[_d["cycle_id"]] = _d.get("detail_text", "")
+
+def concise_intake(case_id, max_days=8):
+    dt = _detail.get(_case2cyc.get(case_id, ""), "")
+    if not dt:
+        return None
+    diet_part, sport_part = (dt.split("【运动打卡逐条明细】", 1) + [""])[:2]
+    count = next((l.strip() for l in diet_part.split("\n") if "共" in l and "打卡" in l), "")
+    days = [l.strip() for l in diet_part.split("\n") if l.strip().startswith("·")]
+    clean = []
+    for d in days:
+        d = _re.sub(r"nan[、]?", "", d).replace("｜  ｜", "｜").replace("  ", " ").strip()
+        d = _re.sub(r"｜\s*｜", "｜", d).strip(" ｜")
+        clean.append(d)
+    more = len(clean) - max_days
+    clean = clean[:max_days]
+    pattern = next((l.strip() for l in diet_part.split("\n") if l.strip().startswith("[规律]")), "")
+    sport = " ".join(l.strip() for l in sport_part.split("\n") if l.strip()) or "无运动打卡"
+    return {"count": count, "days": clean, "more": max(0, more), "pattern": pattern, "sport": sport}
+
 CFG = {"supaUrl": SUPA_URL, "supaKey": SUPA_KEY, "table": TABLE, "batch": BATCH,
        "dims": [{"key": k, "label": lb} for k, lb in DIMS],
        "cases": [dict(case_id=c["case_id"], context=c["context"],
-                      report_A=c["report_A"], report_B=c["report_B"], **parse_context(c["context"]))
+                      report_A=c["report_A"], report_B=c["report_B"],
+                      intake=concise_intake(c["case_id"]), **parse_context(c["context"]))
                  for c in cases]}
 
 HTML = r"""<!doctype html>
@@ -94,6 +124,11 @@ main{max-width:1560px;margin:0 auto;padding:12px 12px 76px}
 .sectitle{color:#2f6df6;font-weight:700;font-size:13px;margin-bottom:6px}
 .cinfo{margin-bottom:4px}
 .cbeh{margin-top:6px;color:#444}
+.intake{margin-top:8px;background:#fff;border:1px solid #d6e0ff;border-radius:8px;padding:6px 10px;font-size:12px}
+.intake>summary{cursor:pointer;color:#2f6df6;font-weight:600;font-size:12.5px}
+.icount{color:var(--muted);margin:4px 0}
+.idays{margin:4px 0;padding-left:18px;line-height:1.6}
+.imore,.ipat{color:var(--muted);margin-top:3px}
 .mcap{font-size:12px;color:var(--muted);margin:2px 0 4px}
 .mtbl{border-collapse:collapse;margin:4px 0;font-size:12.5px;background:#fff;border:1px solid #d6e0ff;border-radius:8px;overflow:hidden}
 .mtbl th,.mtbl td{padding:4px 14px;border-bottom:1px solid #eef2fb;text-align:center}
@@ -215,6 +250,19 @@ function render(){
     h+=`</tbody></table>`;
   } else { h+=`<div style="white-space:pre-wrap">${escapeHtml(c.context)}</div>`; }
   if(c.behavior) h+=`<div class="cbeh">${escapeHtml(c.behavior)}</div>`;
+  if(c.intake){
+    h+=`<details class="intake" open><summary>打卡明细（供判断个性化用）</summary>`;
+    if(c.intake.count) h+=`<div class="icount">${escapeHtml(c.intake.count)}</div>`;
+    if(c.intake.days&&c.intake.days.length){
+      h+=`<ul class="idays">`;
+      for(const dd of c.intake.days){ h+=`<li>${escapeHtml(dd)}</li>`; }
+      h+=`</ul>`;
+      if(c.intake.more>0) h+=`<div class="imore">……另有 ${c.intake.more} 个打卡日从略</div>`;
+    }
+    if(c.intake.pattern) h+=`<div class="ipat">${escapeHtml(c.intake.pattern)}</div>`;
+    if(c.intake.sport) h+=`<div class="ipat">运动：${escapeHtml(c.intake.sport)}</div>`;
+    h+=`</details>`;
+  }
   h+=`</div>`;
   h+=`<div class="pair">${reportCard(c,'A')}${reportCard(c,'B')}</div>`;
   h+=`<div class="pref"><b>若只能发一份给这位患者，您更倾向哪一份？</b><div class="scale">`;
