@@ -72,22 +72,32 @@ def intake_summary(case_id):
     if not dt:
         return None
     diet_part, sport_part = (dt.split("【运动打卡逐条明细】", 1) + [""])[:2]
-    count = next((l.strip().rstrip("：:") for l in diet_part.split("\n") if "共" in l and "打卡" in l), "")
     foods, kcals = _coll.Counter(), []
     for l in diet_part.split("\n"):
         if not l.strip().startswith("·"):
             continue
-        for m in _re.finditer(r"([一-龥A-Za-z（）]+?)\d+(?:\.\d+)?\s*(?:克|毫升|ml|g)", l):
+        lc = _re.sub(r"（[^）]*）", "", l)  # 去掉括注（均值）（红心，山芋红薯）等
+        for m in _re.finditer(r"([一-龥A-Za-z]+?)\d+(?:\.\d+)?\s*(?:克|毫升|ml|g)", lc):
             f = m.group(1).strip("、 ｜")
-            if f and f != "nan":
+            if f and f != "nan" and f not in ("日计约",):
                 foods[f] += 1
         mk = _re.search(r"日计约(\d+)kcal", l)
         if mk and int(mk.group(1)) > 0:
             kcals.append(int(mk.group(1)))
     top = [f for f, _ in foods.most_common(5)]
     avg = round(sum(kcals) / len(kcals)) if kcals else None
-    sport = "无运动打卡" if ("无运动" in sport_part or not sport_part.strip()) else " ".join(sport_part.split())[:80]
-    return {"count": count, "top_foods": top, "avg_kcal": avg, "sport": sport}
+    sport = _re.sub(r"（[^）]*）", "", " ".join(sport_part.split())).replace("运动明细：", "").strip()
+    if ("无运动" in sport) or (not sport):
+        sport = "无"
+    parts = []
+    if top:
+        parts.append("常吃：" + "、".join(top))
+    if avg:
+        parts.append(f"打卡日均约 {avg} 千卡")
+    if not top and not avg:
+        parts.append("打卡以空记录为主（未填具体食物）")
+    parts.append("运动：" + sport)
+    return {"summary": "；".join(parts)}
 
 CFG = {"supaUrl": SUPA_URL, "supaKey": SUPA_KEY, "table": TABLE, "batch": BATCH,
        "dims": [{"key": k, "label": lb} for k, lb in DIMS],
@@ -256,13 +266,7 @@ function render(){
     h+=`</tbody></table>`;
   } else { h+=`<div style="white-space:pre-wrap">${escapeHtml(c.context)}</div>`; }
   if(c.behavior) h+=`<div class="cbeh">${escapeHtml(c.behavior)}</div>`;
-  if(c.intake){
-    const p=[];
-    if(c.intake.top_foods&&c.intake.top_foods.length) p.push('常吃：'+c.intake.top_foods.join('、'));
-    if(c.intake.avg_kcal) p.push('打卡日均约 '+c.intake.avg_kcal+' 千卡');
-    if(c.intake.sport) p.push('运动：'+c.intake.sport);
-    if(p.length) h+=`<div class="cbeh">打卡汇总——${escapeHtml(p.join('；'))}</div>`;
-  }
+  if(c.intake&&c.intake.summary) h+=`<div class="cbeh">打卡汇总——${escapeHtml(c.intake.summary)}</div>`;
   h+=`</div>`;
   h+=`<div class="pair">${reportCard(c,'A')}${reportCard(c,'B')}</div>`;
   h+=`<div class="pref"><b>若只能发一份给这位患者，您更倾向哪一份？</b><div class="scale">`;
