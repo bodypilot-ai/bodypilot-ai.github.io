@@ -46,21 +46,24 @@ header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid v
 header h1{font-size:16px;margin:0 8px 0 0}
 .rater input{padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;width:150px}
 .progress{color:var(--muted);font-size:13px}
-main{max-width:1400px;margin:0 auto;padding:12px}
+main{max-width:1560px;margin:0 auto;padding:12px}
 .context{background:#f0f4ff;border:1px solid #d6e0ff;border-radius:10px;padding:10px 12px;white-space:pre-wrap;margin-bottom:10px;font-size:12.5px}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:820px){.pair{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
 .card h3{margin:0 0 6px;font-size:14px}
-.report{white-space:pre-wrap;background:#fcfcfd;border:1px dashed var(--line);border-radius:8px;padding:9px 11px;font-size:12.5px;line-height:1.5;margin-bottom:8px}
-.dim{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0;padding:3px 0;border-bottom:1px dotted var(--line)}
-.dim .lb{font-weight:600;font-size:13px}
-.scale{display:flex;gap:5px;flex-shrink:0}
-.scale label{border:1px solid var(--line);border-radius:7px;width:30px;text-align:center;padding:4px 0;cursor:pointer;font-size:13px;user-select:none}
+.report{white-space:pre-wrap;background:#fcfcfd;border:1px dashed var(--line);border-radius:8px;padding:9px 11px;font-size:12.5px;line-height:1.5}
+.scorewrap{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.scoretbl{width:100%;border-collapse:collapse;font-size:13px}
+.scoretbl th{font-size:12px;color:var(--muted);font-weight:600;padding:5px 10px;text-align:center;border-bottom:1px solid var(--line)}
+.scoretbl th:first-child{text-align:left}
+.scoretbl td{padding:5px 10px;border-bottom:1px dotted var(--line);text-align:center;vertical-align:middle}
+.scoretbl td.dname{text-align:left;font-weight:600;white-space:nowrap}
+.scoretbl .totrow td{font-weight:700;border-top:1px solid var(--line);border-bottom:none;color:var(--accent)}
+.scale{display:inline-flex;gap:5px}
+.scale label{border:1px solid var(--line);border-radius:7px;width:30px;text-align:center;padding:5px 0;cursor:pointer;font-size:13px;user-select:none}
 .scale input{display:none}
 .scale label:has(input:checked){background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
-.total{font-weight:600;font-size:13px;margin-top:6px}
-.unsafe{margin-top:6px;color:#b00020;font-size:13px}
 .pref{background:#fff7e6;border:1px solid #ffe0a3;border-radius:10px;padding:12px 14px;margin:14px 0}
 .pref .scale label:has(input:checked){background:#f59e0b;border-color:#f59e0b;color:#fff}
 textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-family:inherit;font-size:14px;min-height:46px}
@@ -129,20 +132,26 @@ function scale(cid, side, dimKey, val){
 function sumScores(e){ let s=0; for(const dm of DIMS){ s+=Number((e&&e.scores&&e.scores[dm.key])||0); } return s; }
 function updateTotal(cid,side){ const e=(load()[cid]||{})[side]; const el=document.getElementById('tot_'+cid+'_'+side); if(el) el.textContent=sumScores(e); }
 function reportCard(c, side){
-  const d = load(); const e = (d[c.case_id]||{})[side]||{scores:{}};
   const txt = side==='A'?c.report_A:c.report_B;
-  let h = `<div class="card"><h3>报告 ${side}</h3><div class="report">${escapeHtml(txt)}</div>`;
+  return `<div class="card"><h3>报告 ${side}</h3><div class="report">${escapeHtml(txt)}</div></div>`;
+}
+function scoreTable(c){
+  const d=load(); const eA=(d[c.case_id]||{}).A||{scores:{}}, eB=(d[c.case_id]||{}).B||{scores:{}};
+  let h='<div class="scorewrap"><table class="scoretbl"><thead><tr><th>维度（1差 → 5好）</th><th>报告 A</th><th>报告 B</th></tr></thead><tbody>';
   for(const dim of DIMS){
-    h += `<div class="dim"><span class="lb">${dim.label}</span>${scale(c.case_id, side, dim.key, e.scores[dim.key])}</div>`;
+    h+=`<tr><td class="dname">${dim.label}</td><td>${scale(c.case_id,'A',dim.key,eA.scores[dim.key])}</td><td>${scale(c.case_id,'B',dim.key,eB.scores[dim.key])}</td></tr>`;
   }
-  h += `<div class="total">合计 <span id="tot_${c.case_id}_${side}">${sumScores(e)}</span> / 30</div>`;
-  h += `<label class="unsafe"><input type="checkbox" ${e.unsafe?'checked':''} onchange="setUnsafe('${c.case_id}','${side}',this.checked)"> ⚠ 存在不安全内容（硬红旗）</label>`;
-  return h+'</div>';
+  h+=`<tr><td class="dname" style="color:#b00020">⚠ 不安全红旗</td>`+
+     `<td><label><input type="checkbox" ${eA.unsafe?'checked':''} onchange="setUnsafe('${c.case_id}','A',this.checked)"> 勾选</label></td>`+
+     `<td><label><input type="checkbox" ${eB.unsafe?'checked':''} onchange="setUnsafe('${c.case_id}','B',this.checked)"> 勾选</label></td></tr>`;
+  h+=`<tr class="totrow"><td class="dname">合计 / 30</td><td><span id="tot_${c.case_id}_A">${sumScores(eA)}</span> / 30</td><td><span id="tot_${c.case_id}_B">${sumScores(eB)}</span> / 30</td></tr>`;
+  return h+'</tbody></table></div>';
 }
 function render(){
   const c = CASES[idx]; const d = load(); const e = d[c.case_id]||{};
   let h = `<div class="context">${escapeHtml(c.context)}</div>`;
   h += `<div class="pair">${reportCard(c,'A')}${reportCard(c,'B')}</div>`;
+  h += scoreTable(c);
   h += `<div class="pref"><b>若只能发一份给这位患者，您更倾向哪一份？</b><div class="scale">`;
   for(const [v,lb] of [['A','报告A更好'],['tie','两份相当'],['B','报告B更好']]){
     h += `<label><input type="radio" name="${c.case_id}_pref" value="${v}" ${e.preference==v?'checked':''} onchange="setPref('${c.case_id}','${v}')"><span>${lb}</span></label>`;
