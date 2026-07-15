@@ -153,8 +153,9 @@ textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;f
   <span style="flex:1"></span>
   <button id="prevbtn" onclick="nav(-1)">← 上一例</button>
   <span class="tag" id="counter" style="min-width:120px;text-align:center"></span>
-  <button id="nextbtn" onclick="nav(1)">下一例 →</button>
-  <span style="flex:1;text-align:right"><button class="primary" id="submitbtn" onclick="submitToServer()" style="display:none">提交评分</button></span>
+  <button class="primary" id="nextbtn" onclick="nav(1)">下一例 →</button>
+  <button class="primary" id="submitbtn" onclick="submitToServer()" style="display:none">提交评分</button>
+  <span style="flex:1"></span>
 </div>
 
 <script>
