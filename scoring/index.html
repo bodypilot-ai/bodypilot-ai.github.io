@@ -198,7 +198,7 @@ async function submitToServer(){
       body:JSON.stringify(rows)});
     if(!res.ok) throw new Error(await res.text());
     alert(`提交成功：${rows.length} 条已上传，谢谢！`);
-  }catch(e){ alert('提交失败（'+e.message+'）。请点「导出 CSV」保存并发回研究组。'); }
+  }catch(e){ alert('提交失败（'+e.message+'）。请检查网络后重试；若仍失败，请把此情况告知研究组。'); }
   finally{ btn.disabled=false; btn.textContent='提交评分'; }
 }
 initStart();
