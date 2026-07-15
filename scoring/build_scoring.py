@@ -25,13 +25,7 @@ DIMS = [
     ("clarity", "清晰度"),
 ]
 
-cases = json.load(open(CASES_JSON, encoding="utf-8"))
-
-# 分层精简子集（12 例，保住模式多样性）：2 recomp + 1 维持 + 1 减脂保肌 + 2 掉肌肉 + 6 减脂(跨质量区间)
-SELECTED = ["C08", "C28", "C11", "C17", "C18", "C12", "C27", "C02", "C03", "C19", "C14", "C22"]
-_order = {cid: i for i, cid in enumerate(SELECTED)}
-cases = sorted([c for c in cases if c["case_id"] in set(SELECTED)], key=lambda c: _order[c["case_id"]])
-assert len(cases) == len(SELECTED), f"selected {len(cases)}/{len(SELECTED)} matched"
+cases = json.load(open(CASES_JSON, encoding="utf-8"))  # 已是 12 例配对包（C01–C12，含 recomp/维持/减脂保肌/减脂含掉肌肉）
 
 CFG = {"supaUrl": SUPA_URL, "supaKey": SUPA_KEY, "table": TABLE, "batch": BATCH,
        "dims": [{"key": k, "label": lb} for k, lb in DIMS],
@@ -107,7 +101,7 @@ textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;f
   <p>如发现<b>可能直接造成患者伤害</b>的内容，请勾选「不安全」。</p>
   <div class="startfields">
     <label>姓名 <input id="rname" placeholder="您的姓名"></label>
-    <label>从业年限 <input id="ryears" type="number" min="0" step="1" placeholder="年"> 年</label>
+    <label>从业时长 <input id="ryears" type="number" min="0" step="1" placeholder="年"> 年</label>
   </div>
   <button class="primary big" onclick="startEval()">开始评分 →</button>
   <div class="err" id="starterr"></div>
