@@ -97,7 +97,6 @@ textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;f
   <div class="startfields">
     <label>姓名 <input id="rname" placeholder="您的姓名"></label>
     <label>从业年限 <input id="ryears" type="number" min="0" step="1" placeholder="年"> 年</label>
-    <label>评审ID <input id="rid" placeholder="如 physician_1"></label>
   </div>
   <button class="primary big" onclick="startEval()">开始评分 →</button>
   <div class="err" id="starterr"></div>
@@ -122,7 +121,7 @@ textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;f
 const CFG = __CFG__;
 const DIMS = CFG.dims, CASES = CFG.cases;
 let idx = 0;
-function rid(){ return (document.getElementById('rid').value||'').trim(); }
+function rid(){ return (document.getElementById('rname').value||'').trim(); }  /* 用姓名作标识 */
 function skey(){ return 'phys_'+CFG.batch+'_'+(rid()||'_anon'); }
 function load(){ try{return JSON.parse(localStorage.getItem(skey())||'{}');}catch(e){return {};} }
 function save(d){ localStorage.setItem(skey(), JSON.stringify(d)); }
@@ -132,22 +131,19 @@ function initStart(){
   try{ const last=JSON.parse(localStorage.getItem('phys_last')||'{}');
     if(last.name) document.getElementById('rname').value=last.name;
     if(last.years!=null) document.getElementById('ryears').value=last.years;
-    if(last.id) document.getElementById('rid').value=last.id;
   }catch(e){}
 }
 function startEval(){
   const name=(document.getElementById('rname').value||'').trim();
-  const id=(document.getElementById('rid').value||'').trim();
   const err=document.getElementById('starterr');
   if(!name){ err.textContent='请填写姓名'; return; }
-  if(!id){ err.textContent='请填写评审ID（如 physician_1）'; return; }
   setMeta();
-  localStorage.setItem('phys_last', JSON.stringify({name, years:document.getElementById('ryears').value, id}));
+  localStorage.setItem('phys_last', JSON.stringify({name, years:document.getElementById('ryears').value}));
   document.getElementById('startscreen').style.display='none';
   document.getElementById('hdr').style.display='';
   document.getElementById('app').style.display='';
   document.getElementById('bar').style.display='';
-  document.getElementById('who').textContent = name+'（'+id+'）';
+  document.getElementById('who').textContent = name;
   idx=0; render();
 }
 
@@ -221,7 +217,7 @@ function exportCsv(){
   a.download='physician_scores_'+(rid()||'anon')+'_'+CFG.batch+'.csv'; a.click();
 }
 async function submitToServer(){
-  const r=rid(); if(!r){alert('请先填写评审ID');return;}
+  const r=rid(); if(!r){alert('请先填写姓名');return;}
   const rows=buildRows(); if(!rows.length){alert('还没有完成任何评分');return;}
   const incomplete=CASES.filter(c=>!caseDone(load(),c)).length;
   if(incomplete>0 && !confirm(`还有 ${incomplete} 例未完成，只提交已完成的部分吗？（可稍后继续并再次提交）`)) return;
