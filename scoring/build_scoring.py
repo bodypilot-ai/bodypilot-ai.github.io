@@ -42,7 +42,7 @@ def parse_context(ctx):
         return r
     for l in lines:
         if "先前" in l and "本次" in l:
-            prefix = l[:l.find("先前")].rstrip("：: ")
+            prefix = l[:l.find("先前")].rstrip("：: ").replace("本次两次", "两次")
             m = _re.search(r"先前(.*?)；本次(.*)", l)
             if m:
                 cur = dict(toks(m.group(2)))
