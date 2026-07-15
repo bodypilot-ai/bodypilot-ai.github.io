@@ -65,7 +65,7 @@ for _line in open(_DET, encoding="utf-8"):
     if _d.get("cycle_id"):
         _detail[_d["cycle_id"]] = _d.get("detail_text", "")
 
-def concise_intake(case_id, max_days=8):
+def concise_intake(case_id, max_days=6):
     dt = _detail.get(_case2cyc.get(case_id, ""), "")
     if not dt:
         return None
@@ -251,7 +251,7 @@ function render(){
   } else { h+=`<div style="white-space:pre-wrap">${escapeHtml(c.context)}</div>`; }
   if(c.behavior) h+=`<div class="cbeh">${escapeHtml(c.behavior)}</div>`;
   if(c.intake){
-    h+=`<details class="intake" open><summary>打卡明细（供判断个性化用）</summary>`;
+    h+=`<details class="intake"><summary>▸ 展开打卡明细（供判断个性化用）</summary>`;
     if(c.intake.count) h+=`<div class="icount">${escapeHtml(c.intake.count)}</div>`;
     if(c.intake.days&&c.intake.days.length){
       h+=`<ul class="idays">`;
