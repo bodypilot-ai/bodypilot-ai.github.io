@@ -26,6 +26,13 @@ DIMS = [
 ]
 
 cases = json.load(open(CASES_JSON, encoding="utf-8"))
+
+# 分层精简子集（12 例，保住模式多样性）：2 recomp + 1 维持 + 1 减脂保肌 + 2 掉肌肉 + 6 减脂(跨质量区间)
+SELECTED = ["C08", "C28", "C11", "C17", "C18", "C12", "C27", "C02", "C03", "C19", "C14", "C22"]
+_order = {cid: i for i, cid in enumerate(SELECTED)}
+cases = sorted([c for c in cases if c["case_id"] in set(SELECTED)], key=lambda c: _order[c["case_id"]])
+assert len(cases) == len(SELECTED), f"selected {len(cases)}/{len(SELECTED)} matched"
+
 CFG = {"supaUrl": SUPA_URL, "supaKey": SUPA_KEY, "table": TABLE, "batch": BATCH,
        "dims": [{"key": k, "label": lb} for k, lb in DIMS],
        "cases": [{"case_id": c["case_id"], "context": c["context"],
@@ -85,8 +92,8 @@ textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;f
 
 <div id="startscreen" class="startscreen"><div class="startcard">
   <h1>BodyPilot · 医生盲评</h1>
-  <p>共 <b>30 例</b>。每例包含两份匿名 AI 体重管理建议（A / B，顺序随机），来自不同的自动化方案。您<b>不会被告知每份建议的来源</b>，请仅根据建议<b>本身的质量</b>进行评分。</p>
-  <p>请分别为 A、B 两份建议的 <b>6 个维度</b>打分（<b>1–5 分，5 分最好、1 分最差</b>），完成后选择<b>更愿意发给患者</b>的一份。预计用时 20–30 分钟。</p>
+  <p>共 <b>12 例</b>。每例包含两份匿名 AI 体重管理建议（A / B，顺序随机），来自不同的自动化方案。您<b>不会被告知每份建议的来源</b>，请仅根据建议<b>本身的质量</b>进行评分。</p>
+  <p>请分别为 A、B 两份建议的 <b>6 个维度</b>打分（<b>1–5 分，5 分最好、1 分最差</b>），完成后选择<b>更愿意发给患者</b>的一份。预计用时 10–15 分钟。</p>
   <div class="legend"><b>评分维度：</b>
     <ul style="margin:6px 0 0;padding-left:20px;line-height:1.75">
       <li><b>正确性</b>：数值和原则符合指南</li>
