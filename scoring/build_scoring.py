@@ -2,10 +2,10 @@
 """
 生成配对医生盲评网页 deploy/scoring/index.html
 读 data/physician_eval/2026-07-15/paired_cases.json（30 例：case_id/context/report_A/report_B）。
-六维(1–5) + unsafe(0/1) + 偏好(A更好/相当/B更好) + 备注；localStorage 暂存；
-提交 REST 到 Supabase physician_scores 表；导出 CSV 兜底。
+开始页(姓名/从业年限/规则)→评分区(每例:报告A|B 各带六维1–5 + unsafe，合计/30，偏好，备注)。
+底部固定操作条(上一/下一例常驻)；提交按钮仅最后一例出现。localStorage 暂存；提交 REST 到 Supabase。
 """
-import json, os, html
+import json, os
 
 HERE = os.path.dirname(__file__)
 CASES_JSON = os.path.join(HERE, "..", "..", "data", "physician_eval", "2026-07-15", "paired_cases.json")
@@ -17,24 +17,21 @@ TABLE = "physician_scores"
 BATCH = "2026-07-15"
 
 DIMS = [
-    ("correctness", "临床正确性", "事实/数值/饮食运动原则是否医学正确、合指南"),
-    ("consistency", "内部一致性", "各段连贯无矛盾；减重目标/热量/蛋白算术自洽"),
-    ("personalization", "个性化", "是否贴合该用户体成分/历史/打卡，而非通用模板"),
-    ("actionability", "可执行性", "是否具体可量化、患者能照做"),
-    ("safety", "临床安全性", "无有害/极端建议，转诊/免责恰当"),
-    ("clarity", "清晰度", "通俗、条理清楚、篇幅适中"),
+    ("correctness", "临床正确性"),
+    ("consistency", "内部一致性"),
+    ("personalization", "个性化"),
+    ("actionability", "可执行性"),
+    ("safety", "临床安全性"),
+    ("clarity", "清晰度"),
 ]
 
 cases = json.load(open(CASES_JSON, encoding="utf-8"))
+CFG = {"supaUrl": SUPA_URL, "supaKey": SUPA_KEY, "table": TABLE, "batch": BATCH,
+       "dims": [{"key": k, "label": lb} for k, lb in DIMS],
+       "cases": [{"case_id": c["case_id"], "context": c["context"],
+                  "report_A": c["report_A"], "report_B": c["report_B"]} for c in cases]}
 
-CFG = {
-    "supaUrl": SUPA_URL, "supaKey": SUPA_KEY, "table": TABLE, "batch": BATCH,
-    "dims": [{"key": k, "label": lb, "hint": h} for k, lb, h in DIMS],
-    "cases": [{"case_id": c["case_id"], "context": c["context"],
-               "report_A": c["report_A"], "report_B": c["report_B"]} for c in cases],
-}
-
-HTML = """<!doctype html>
+HTML = r"""<!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>医生盲评 · 配对（2026-07-15）</title>
@@ -42,74 +39,79 @@ HTML = """<!doctype html>
 :root{--line:#e2e2e6;--ink:#1a1a1a;--muted:#666;--bg:#fafafa;--accent:#2f6df6;--card:#fff}
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);font-size:13px;line-height:1.5}
-header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-header h1{font-size:16px;margin:0 8px 0 0}
-.rater input{padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;width:150px}
-.progress{color:var(--muted);font-size:13px}
-main{max-width:1560px;margin:0 auto;padding:12px}
+/* 开始页 */
+.startscreen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;z-index:30;overflow:auto}
+.startcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px 30px;max-width:640px;width:100%}
+.startcard h1{font-size:20px;margin:0 0 12px}
+.startcard p{font-size:14px;margin:8px 0}
+.legend{color:var(--muted);font-size:13px;background:#f6f6f8;border-radius:8px;padding:9px 11px;margin:8px 0}
+.startfields{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}
+.startfields label{font-size:14px}
+.startfields input{padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;margin-left:4px}
+.startfields input#rname,.startfields input#rid{width:150px}
+.startfields input#ryears{width:70px}
+button{padding:9px 16px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:14px}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.big{padding:11px 24px;font-size:15px}
+button:disabled{opacity:.4;cursor:not-allowed}
+.err{color:#b00020;font-size:13px;margin-top:8px}
+/* 评分区 */
+header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:9px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header h1{font-size:15px;margin:0}
+.who{font-size:13px;color:var(--muted)}
+.progress{margin-left:auto;color:var(--muted);font-size:13px}
+main{max-width:1560px;margin:0 auto;padding:12px 12px 76px}
 .context{background:#f0f4ff;border:1px solid #d6e0ff;border-radius:10px;padding:10px 12px;white-space:pre-wrap;margin-bottom:10px;font-size:12.5px}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:820px){.pair{grid-template-columns:1fr}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
 .card h3{margin:0 0 6px;font-size:14px}
-.report{white-space:pre-wrap;background:#fcfcfd;border:1px dashed var(--line);border-radius:8px;padding:9px 11px;font-size:12.5px;line-height:1.5}
-.scorewrap{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
-.scoretbl{width:100%;border-collapse:collapse;font-size:13px}
-.scoretbl th{font-size:12px;color:var(--muted);font-weight:600;padding:5px 10px;text-align:center;border-bottom:1px solid var(--line)}
-.scoretbl th:first-child{text-align:left}
-.scoretbl td{padding:5px 10px;border-bottom:1px dotted var(--line);text-align:center;vertical-align:middle}
-.scoretbl td.dname{text-align:left;font-weight:600;white-space:nowrap}
-.scoretbl .totrow td{font-weight:700;border-top:1px solid var(--line);border-bottom:none;color:var(--accent)}
+.report{white-space:pre-wrap;background:#fcfcfd;border:1px dashed var(--line);border-radius:8px;padding:9px 11px;font-size:12.5px;line-height:1.5;margin-bottom:8px}
+.dim{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0;padding:3px 0;border-bottom:1px dotted var(--line)}
+.dim .lb{font-weight:600;font-size:13px}
+.total{font-weight:700;font-size:13px;margin-top:6px;color:var(--accent)}
+.unsafe{display:block;margin-top:6px;color:#b00020;font-size:13px}
 .scale{display:inline-flex;gap:5px}
 .scale label{border:1px solid var(--line);border-radius:7px;width:30px;text-align:center;padding:5px 0;cursor:pointer;font-size:13px;user-select:none}
 .scale input{display:none}
 .scale label:has(input:checked){background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
-.pref{background:#fff7e6;border:1px solid #ffe0a3;border-radius:10px;padding:12px 14px;margin:14px 0}
-.pref .scale label:has(input:checked){background:#f59e0b;border-color:#f59e0b;color:#fff}
-textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-family:inherit;font-size:14px;min-height:46px}
-.nav{display:flex;justify-content:space-between;align-items:center;margin:18px 0;gap:10px}
-button{padding:9px 16px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:14px}
-button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-.bar{position:sticky;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 16px;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.pref{background:#fff7e6;border:1px solid #ffe0a3;border-radius:10px;padding:10px 12px;margin:12px 0}
+.pref .scale label:has(input:checked){background:#f59e0b;border-color:#f59e0b}
+textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-family:inherit;font-size:13px;min-height:44px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:9px 16px;display:flex;gap:10px;align-items:center;z-index:8}
 .tag{font-size:12px;color:var(--muted)}
-.intro{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
-.intro h2{font-size:15px;margin:0 0 8px}
-.metafields{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px}
-.metafields label{font-size:14px}
-.metafields input{padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;margin-left:4px}
-.intro p{margin:6px 0}
-.legend{color:var(--muted);font-size:13px;background:#f6f6f8;border-radius:8px;padding:8px 10px}
 </style></head>
 <body>
-<header>
-  <h1>医生盲评 · 配对</h1>
-  <span class="rater">评审ID <input id="rid" placeholder="如 physician_1" oninput="onRid()"></span>
-  <span class="progress" id="prog"></span>
-  <span class="tag">六维各 1–5；两份报告匿名、顺序随机；请独立评分。</span>
-</header>
-<main>
-  <section class="intro">
-    <h2>评分说明</h2>
-    <div class="metafields">
-      <label>姓名 <input id="rname" placeholder="您的姓名" oninput="setMeta()"></label>
-      <label>从业年限 <input id="ryears" type="number" min="0" step="1" placeholder="年" oninput="setMeta()"> 年</label>
-    </div>
-    <p>请<b>分别、独立</b>地为报告 A 与报告 B 打分。两份报告<b>匿名、顺序随机</b>，可能来自不同系统，请只按<b>质量本身</b>评价。每个维度打 <b>1–5 分</b>；如发现<b>任何可能直接导致伤害</b>的内容，请勾选「不安全」。最后选择：若只能发一份给这位患者，您更倾向哪一份。</p>
-    <p class="legend"><b>分值含义（六维通用）：</b>5＝优秀·无问题 ｜ 4＝好·仅小瑕疵 ｜ 3＝可接受但有明显不足 ｜ 2＝较差·明显问题 ｜ 1＝很差·严重问题。<b>5 分最好，1 分最差。</b></p>
-    <p class="legend"><b>六个维度：</b>正确性（数值/原则合指南）·一致性（各段不矛盾、算术自洽）·个性化（贴合本人数据与打卡）·可执行性（具体、能照做）·安全性（无有害/极端、转诊免责恰当）·清晰度（通俗、条理、篇幅适中）。</p>
-  </section>
-  <div id="casebox"></div>
-  <div class="nav">
-    <button onclick="nav(-1)">← 上一例</button>
-    <span id="counter" class="tag"></span>
-    <button onclick="nav(1)">下一例 →</button>
+
+<div id="startscreen" class="startscreen"><div class="startcard">
+  <h1>BodyPilot · 医生盲评</h1>
+  <p>共 <b>30 例</b>，每例两份<b>匿名</b>报告（A / B，顺序随机，可能来自不同系统）。请<b>分别、独立</b>地按质量为每份打 6 个维度分（1–5），再选出更愿意发给这位患者的一份。约 20–30 分钟，可分次完成（本机自动暂存）。</p>
+  <div class="legend"><b>分值含义：</b>5＝优秀·无问题 ｜ 4＝好·仅小瑕疵 ｜ 3＝可接受但有明显不足 ｜ 2＝较差·明显问题 ｜ 1＝很差·严重问题。<b>5 分最好，1 分最差。</b></div>
+  <div class="legend"><b>六个维度：</b>正确性（数值/原则合指南）· 一致性（各段不矛盾、算术自洽）· 个性化（贴合本人数据与打卡）· 可执行性（具体能照做）· 安全性（无有害/极端，转诊免责恰当）· 清晰度（通俗、条理、篇幅适中）。发现<b>可能直接致害</b>的内容请勾「不安全」。</div>
+  <div class="startfields">
+    <label>姓名 <input id="rname" placeholder="您的姓名"></label>
+    <label>从业年限 <input id="ryears" type="number" min="0" step="1" placeholder="年"> 年</label>
+    <label>评审ID <input id="rid" placeholder="如 physician_1"></label>
   </div>
-</main>
-<div class="bar">
-  <span class="tag" id="savehint">自动本地暂存</span>
+  <button class="primary big" onclick="startEval()">开始评分 →</button>
+  <div class="err" id="starterr"></div>
+</div></div>
+
+<header id="hdr" style="display:none">
+  <h1>医生盲评</h1><span class="who" id="who"></span>
+  <span class="progress" id="prog"></span>
+</header>
+<main id="app" style="display:none"><div id="casebox"></div></main>
+<div class="bar" id="bar" style="display:none">
+  <button id="prevbtn" onclick="nav(-1)">← 上一例</button>
+  <span class="tag" id="counter"></span>
+  <button id="nextbtn" onclick="nav(1)">下一例 →</button>
+  <span style="flex:1"></span>
+  <span class="tag">本机自动暂存</span>
   <button onclick="exportCsv()">导出 CSV</button>
-  <button class="primary" id="submitbtn" onclick="submitToServer()">提交评分</button>
+  <button class="primary" id="submitbtn" onclick="submitToServer()" style="display:none">提交评分</button>
 </div>
+
 <script>
 const CFG = __CFG__;
 const DIMS = CFG.dims, CASES = CFG.cases;
@@ -118,59 +120,76 @@ function rid(){ return (document.getElementById('rid').value||'').trim(); }
 function skey(){ return 'phys_'+CFG.batch+'_'+(rid()||'_anon'); }
 function load(){ try{return JSON.parse(localStorage.getItem(skey())||'{}');}catch(e){return {};} }
 function save(d){ localStorage.setItem(skey(), JSON.stringify(d)); }
-function onRid(){ initMeta(); render(); }
 function setMeta(){ const d=load(); d._name=(document.getElementById('rname').value||'').trim(); d._years=(document.getElementById('ryears').value||'').trim(); save(d); }
-function initMeta(){ const d=load(); const n=document.getElementById('rname'), y=document.getElementById('ryears'); if(n) n.value=d._name||''; if(y) y.value=d._years||''; }
+
+function initStart(){
+  try{ const last=JSON.parse(localStorage.getItem('phys_last')||'{}');
+    if(last.name) document.getElementById('rname').value=last.name;
+    if(last.years!=null) document.getElementById('ryears').value=last.years;
+    if(last.id) document.getElementById('rid').value=last.id;
+  }catch(e){}
+}
+function startEval(){
+  const name=(document.getElementById('rname').value||'').trim();
+  const id=(document.getElementById('rid').value||'').trim();
+  const err=document.getElementById('starterr');
+  if(!name){ err.textContent='请填写姓名'; return; }
+  if(!id){ err.textContent='请填写评审ID（如 physician_1）'; return; }
+  setMeta();
+  localStorage.setItem('phys_last', JSON.stringify({name, years:document.getElementById('ryears').value, id}));
+  document.getElementById('startscreen').style.display='none';
+  document.getElementById('hdr').style.display='';
+  document.getElementById('app').style.display='';
+  document.getElementById('bar').style.display='';
+  document.getElementById('who').textContent = name+'（'+id+'）';
+  idx=0; render();
+}
 
 function scale(cid, side, dimKey, val){
   let s='<div class="scale">';
-  for(let i=1;i<=5;i++){
-    s+=`<label><input type="radio" name="${cid}_${side}_${dimKey}" value="${i}" ${val==i?'checked':''} onchange="setScore('${cid}','${side}','${dimKey}',${i})"><span>${i}</span></label>`;
-  }
+  for(let i=1;i<=5;i++){ s+=`<label><input type="radio" name="${cid}_${side}_${dimKey}" value="${i}" ${val==i?'checked':''} onchange="setScore('${cid}','${side}','${dimKey}',${i})"><span>${i}</span></label>`; }
   return s+'</div>';
 }
 function sumScores(e){ let s=0; for(const dm of DIMS){ s+=Number((e&&e.scores&&e.scores[dm.key])||0); } return s; }
 function updateTotal(cid,side){ const e=(load()[cid]||{})[side]; const el=document.getElementById('tot_'+cid+'_'+side); if(el) el.textContent=sumScores(e); }
 function reportCard(c, side){
+  const e=(load()[c.case_id]||{})[side]||{scores:{}};
   const txt = side==='A'?c.report_A:c.report_B;
-  return `<div class="card"><h3>报告 ${side}</h3><div class="report">${escapeHtml(txt)}</div></div>`;
-}
-function scoreTable(c){
-  const d=load(); const eA=(d[c.case_id]||{}).A||{scores:{}}, eB=(d[c.case_id]||{}).B||{scores:{}};
-  let h='<div class="scorewrap"><table class="scoretbl"><thead><tr><th>维度（1差 → 5好）</th><th>报告 A</th><th>报告 B</th></tr></thead><tbody>';
-  for(const dim of DIMS){
-    h+=`<tr><td class="dname">${dim.label}</td><td>${scale(c.case_id,'A',dim.key,eA.scores[dim.key])}</td><td>${scale(c.case_id,'B',dim.key,eB.scores[dim.key])}</td></tr>`;
-  }
-  h+=`<tr><td class="dname" style="color:#b00020">⚠ 不安全红旗</td>`+
-     `<td><label><input type="checkbox" ${eA.unsafe?'checked':''} onchange="setUnsafe('${c.case_id}','A',this.checked)"> 勾选</label></td>`+
-     `<td><label><input type="checkbox" ${eB.unsafe?'checked':''} onchange="setUnsafe('${c.case_id}','B',this.checked)"> 勾选</label></td></tr>`;
-  h+=`<tr class="totrow"><td class="dname">合计 / 30</td><td><span id="tot_${c.case_id}_A">${sumScores(eA)}</span> / 30</td><td><span id="tot_${c.case_id}_B">${sumScores(eB)}</span> / 30</td></tr>`;
-  return h+'</tbody></table></div>';
+  let h=`<div class="card"><h3>报告 ${side}</h3><div class="report">${escapeHtml(txt)}</div>`;
+  for(const dim of DIMS){ h+=`<div class="dim"><span class="lb">${dim.label}</span>${scale(c.case_id,side,dim.key,e.scores[dim.key])}</div>`; }
+  h+=`<div class="total">合计 <span id="tot_${c.case_id}_${side}">${sumScores(e)}</span> / 30</div>`;
+  h+=`<label class="unsafe"><input type="checkbox" ${e.unsafe?'checked':''} onchange="setUnsafe('${c.case_id}','${side}',this.checked)"> ⚠ 存在可能直接致害的内容（不安全）</label>`;
+  return h+'</div>';
 }
 function render(){
-  const c = CASES[idx]; const d = load(); const e = d[c.case_id]||{};
-  let h = `<div class="context">${escapeHtml(c.context)}</div>`;
-  h += `<div class="pair">${reportCard(c,'A')}${reportCard(c,'B')}</div>`;
-  h += scoreTable(c);
-  h += `<div class="pref"><b>若只能发一份给这位患者，您更倾向哪一份？</b><div class="scale">`;
+  const c=CASES[idx]; const d=load(); const e=d[c.case_id]||{};
+  let h=`<div class="context">${escapeHtml(c.context)}</div>`;
+  h+=`<div class="pair">${reportCard(c,'A')}${reportCard(c,'B')}</div>`;
+  h+=`<div class="pref"><b>若只能发一份给这位患者，您更倾向哪一份？</b><div class="scale">`;
   for(const [v,lb] of [['A','报告A更好'],['tie','两份相当'],['B','报告B更好']]){
-    h += `<label><input type="radio" name="${c.case_id}_pref" value="${v}" ${e.preference==v?'checked':''} onchange="setPref('${c.case_id}','${v}')"><span>${lb}</span></label>`;
+    h+=`<label style="width:auto;padding:5px 12px"><input type="radio" name="${c.case_id}_pref" value="${v}" ${e.preference==v?'checked':''} onchange="setPref('${c.case_id}','${v}')"><span>${lb}</span></label>`;
   }
-  h += `</div></div>`;
-  h += `<div><b>备注（可选）</b><textarea oninput="setNote('${c.case_id}',this.value)">${e.notes?escapeHtml(e.notes):''}</textarea></div>`;
-  document.getElementById('casebox').innerHTML = h;
-  document.getElementById('counter').textContent = `第 ${idx+1} / ${CASES.length} 例 · ${c.case_id}`;
-  updateProg();
+  h+=`</div></div><div><b>备注（可选）</b><textarea oninput="setNote('${c.case_id}',this.value)">${e.notes?escapeHtml(e.notes):''}</textarea></div>`;
+  document.getElementById('casebox').innerHTML=h;
+  updateBar(); window.scrollTo(0,0);
 }
 function ensure(d,cid,side){ d[cid]=d[cid]||{}; d[cid][side]=d[cid][side]||{scores:{}}; return d; }
-function setScore(cid,side,key,v){ const d=ensure(load(),cid,side); d[cid][side].scores[key]=v; save(d); updateTotal(cid,side); updateProg(); }
+function setScore(cid,side,key,v){ const d=ensure(load(),cid,side); d[cid][side].scores[key]=v; save(d); updateTotal(cid,side); updateBar(); }
 function setUnsafe(cid,side,v){ const d=ensure(load(),cid,side); d[cid][side].unsafe=v; save(d); }
-function setPref(cid,v){ const d=load(); d[cid]=d[cid]||{}; d[cid].preference=v; save(d); updateProg(); }
+function setPref(cid,v){ const d=load(); d[cid]=d[cid]||{}; d[cid].preference=v; save(d); updateBar(); }
 function setNote(cid,v){ const d=load(); d[cid]=d[cid]||{}; d[cid].notes=v; save(d); }
 function sideDone(e){ if(!e||!e.scores) return false; return DIMS.every(dm=>e.scores[dm.key]); }
 function caseDone(d,c){ const e=d[c.case_id]||{}; return sideDone(e.A)&&sideDone(e.B)&&e.preference; }
-function updateProg(){ const d=load(); const done=CASES.filter(c=>caseDone(d,c)).length; document.getElementById('prog').textContent=`已完成 ${done}/${CASES.length} 例`; }
-function nav(k){ idx=Math.max(0,Math.min(CASES.length-1, idx+k)); window.scrollTo(0,0); render(); }
+function updateBar(){
+  const last=idx===CASES.length-1; const d=load();
+  const done=CASES.filter(c=>caseDone(d,c)).length;
+  document.getElementById('counter').textContent=`第 ${idx+1}/${CASES.length} 例 · ${CASES[idx].case_id}`;
+  document.getElementById('prog').textContent=`已完成 ${done}/${CASES.length} 例`;
+  document.getElementById('prevbtn').disabled = idx===0;
+  document.getElementById('nextbtn').style.display = last?'none':'';
+  document.getElementById('submitbtn').style.display = last?'':'none';
+}
+function nav(k){ idx=Math.max(0,Math.min(CASES.length-1, idx+k)); render(); }
 function escapeHtml(s){ return (s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
 
 function buildRows(){
@@ -180,8 +199,7 @@ function buildRows(){
     for(const side of ['A','B']){
       const e=(d[c.case_id]||{})[side]; if(!sideDone(e)) continue;
       const row={rater_id:r, rater_name:rname, rater_years:ryears, batch:CFG.batch, case_code:c.case_id, candidate_label:side,
-                 preference:(d[c.case_id]||{}).preference||null, unsafe_flag:!!e.unsafe,
-                 comment:(d[c.case_id]||{}).notes||''};
+                 preference:(d[c.case_id]||{}).preference||null, unsafe_flag:!!e.unsafe, comment:(d[c.case_id]||{}).notes||''};
       for(const dm of DIMS){ row['dim_'+dm.key]=e.scores[dm.key]; }
       rows.push(row);
     }
@@ -191,14 +209,13 @@ function buildRows(){
 function exportCsv(){
   const rows=buildRows(); if(!rows.length){alert('还没有完成任何评分');return;}
   const cols=['rater_id','rater_name','rater_years','batch','case_code','candidate_label','dim_correctness','dim_consistency','dim_personalization','dim_actionability','dim_safety','dim_clarity','unsafe_flag','preference','comment'];
-  let csv=cols.join(',')+'\\n';
-  for(const r of rows){ csv+=cols.map(k=>{let v=r[k]==null?'':(''+r[k]);return /[",\\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(',')+'\\n'; }
+  let csv=cols.join(',')+'\n';
+  for(const r of rows){ csv+=cols.map(k=>{let v=r[k]==null?'':(''+r[k]);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(',')+'\n'; }
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download='physician_scores_'+(rid()||'anon')+'_'+CFG.batch+'.csv'; a.click();
 }
 async function submitToServer(){
   const r=rid(); if(!r){alert('请先填写评审ID');return;}
-  if(!(load()._name||'').trim()){ alert('请先在顶部填写姓名与从业年限'); return; }
   const rows=buildRows(); if(!rows.length){alert('还没有完成任何评分');return;}
   const incomplete=CASES.filter(c=>!caseDone(load(),c)).length;
   if(incomplete>0 && !confirm(`还有 ${incomplete} 例未完成，只提交已完成的部分吗？（可稍后继续并再次提交）`)) return;
@@ -212,7 +229,7 @@ async function submitToServer(){
   }catch(e){ alert('提交失败（'+e.message+'）。请点「导出 CSV」保存并发回研究组。'); }
   finally{ btn.disabled=false; btn.textContent='提交评分'; }
 }
-initMeta(); render();
+initStart();
 </script>
 </body></html>
 """
