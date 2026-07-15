@@ -52,9 +52,15 @@ textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;f
 
 <div id="startscreen" class="startscreen"><div class="startcard">
   <h1>BodyPilot · 医生盲评</h1>
-  <p>共 <b>30 例</b>，每例两份<b>匿名</b>报告（A / B，顺序随机，可能来自不同系统）。请<b>分别、独立</b>地按质量为每份打 6 个维度分（1–5），再选出更愿意发给这位患者的一份。约 20–30 分钟，可分次完成（本机自动暂存）。</p>
-  <div class="legend"><b>分值含义：</b>5＝优秀·无问题 ｜ 4＝好·仅小瑕疵 ｜ 3＝可接受但有明显不足 ｜ 2＝较差·明显问题 ｜ 1＝很差·严重问题。<b>5 分最好，1 分最差。</b></div>
-  <div class="legend"><b>六个维度：</b>正确性（数值/原则合指南）· 一致性（各段不矛盾、算术自洽）· 个性化（贴合本人数据与打卡）· 可执行性（具体能照做）· 安全性（无有害/极端，转诊免责恰当）· 清晰度（通俗、条理、篇幅适中）。发现<b>可能直接致害</b>的内容请勾「不安全」。</div>
+  <p>共 <b>30 例</b>。每例包含两份匿名 AI 体重管理建议（A / B，顺序随机）。</p>
+  <p><b>两份建议均由 AI 系统自动生成，但来自不同的自动化方案。</b>您不会被告知每份建议来自哪个系统，请仅根据建议<b>本身的质量</b>评分。</p>
+  <p>请完成两项评价：</p>
+  <ol style="margin:4px 0 8px 20px;padding:0;font-size:14px;line-height:1.7">
+    <li>分别为 A、B 两份建议的 <b>6 个维度</b>评分（1–5 分）<span class="tag">（正确性·一致性·个性化·可执行性·安全性·清晰度）</span></li>
+    <li>选择您<b>更愿意发给患者</b>的一份</li>
+  </ol>
+  <p class="tag">预计用时 20–30 分钟，可分次完成，评分会自动保存在本机。</p>
+  <div class="legend"><b>评分标准：</b>5＝优秀，无明显问题 ｜ 4＝较好，仅有小瑕疵 ｜ 3＝基本可接受，但有明显不足 ｜ 2＝较差，存在明显问题 ｜ 1＝很差，存在严重问题。<br>如发现<b>可能直接造成伤害</b>的内容，请勾选「不安全」。</div>
   <div class="startfields">
     <label>姓名 <input id="rname" placeholder="您的姓名"></label>
     <label>从业年限 <input id="ryears" type="number" min="0" step="1" placeholder="年"> 年</label>
