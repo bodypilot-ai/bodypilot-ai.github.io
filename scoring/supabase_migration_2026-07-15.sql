@@ -9,6 +9,8 @@ create table if not exists public.physician_scores (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz default now(),
   rater_id text not null,
+  rater_name text,
+  rater_years numeric,
   batch text,
   case_code text not null,
   candidate_label text not null,
@@ -25,6 +27,8 @@ create table if not exists public.physician_scores (
 );
 
 -- 2) 表已存在（旧 schema）时补齐本轮新增列
+alter table public.physician_scores add column if not exists rater_name text;
+alter table public.physician_scores add column if not exists rater_years numeric;
 alter table public.physician_scores add column if not exists batch text;
 alter table public.physician_scores add column if not exists dim_correctness int;
 alter table public.physician_scores add column if not exists dim_consistency int;
