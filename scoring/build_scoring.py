@@ -65,29 +65,35 @@ for _line in open(_DET, encoding="utf-8"):
     if _d.get("cycle_id"):
         _detail[_d["cycle_id"]] = _d.get("detail_text", "")
 
-def concise_intake(case_id, max_days=6):
+import collections as _coll
+def intake_summary(case_id):
+    """打卡汇总（与 v2 判官同级）：条数/天数 + 常吃食物(按频次) + 打卡日均热量 + 运动。不呈现逐日流水。"""
     dt = _detail.get(_case2cyc.get(case_id, ""), "")
     if not dt:
         return None
     diet_part, sport_part = (dt.split("【运动打卡逐条明细】", 1) + [""])[:2]
-    count = next((l.strip() for l in diet_part.split("\n") if "共" in l and "打卡" in l), "")
-    days = [l.strip() for l in diet_part.split("\n") if l.strip().startswith("·")]
-    clean = []
-    for d in days:
-        d = _re.sub(r"nan[、]?", "", d).replace("｜  ｜", "｜").replace("  ", " ").strip()
-        d = _re.sub(r"｜\s*｜", "｜", d).strip(" ｜")
-        clean.append(d)
-    more = len(clean) - max_days
-    clean = clean[:max_days]
-    pattern = next((l.strip() for l in diet_part.split("\n") if l.strip().startswith("[规律]")), "")
-    sport = " ".join(l.strip() for l in sport_part.split("\n") if l.strip()) or "无运动打卡"
-    return {"count": count, "days": clean, "more": max(0, more), "pattern": pattern, "sport": sport}
+    count = next((l.strip().rstrip("：:") for l in diet_part.split("\n") if "共" in l and "打卡" in l), "")
+    foods, kcals = _coll.Counter(), []
+    for l in diet_part.split("\n"):
+        if not l.strip().startswith("·"):
+            continue
+        for m in _re.finditer(r"([一-龥A-Za-z（）]+?)\d+(?:\.\d+)?\s*(?:克|毫升|ml|g)", l):
+            f = m.group(1).strip("、 ｜")
+            if f and f != "nan":
+                foods[f] += 1
+        mk = _re.search(r"日计约(\d+)kcal", l)
+        if mk and int(mk.group(1)) > 0:
+            kcals.append(int(mk.group(1)))
+    top = [f for f, _ in foods.most_common(5)]
+    avg = round(sum(kcals) / len(kcals)) if kcals else None
+    sport = "无运动打卡" if ("无运动" in sport_part or not sport_part.strip()) else " ".join(sport_part.split())[:80]
+    return {"count": count, "top_foods": top, "avg_kcal": avg, "sport": sport}
 
 CFG = {"supaUrl": SUPA_URL, "supaKey": SUPA_KEY, "table": TABLE, "batch": BATCH,
        "dims": [{"key": k, "label": lb} for k, lb in DIMS],
        "cases": [dict(case_id=c["case_id"], context=c["context"],
                       report_A=c["report_A"], report_B=c["report_B"],
-                      intake=concise_intake(c["case_id"]), **parse_context(c["context"]))
+                      intake=intake_summary(c["case_id"]), **parse_context(c["context"]))
                  for c in cases]}
 
 HTML = r"""<!doctype html>
@@ -251,17 +257,11 @@ function render(){
   } else { h+=`<div style="white-space:pre-wrap">${escapeHtml(c.context)}</div>`; }
   if(c.behavior) h+=`<div class="cbeh">${escapeHtml(c.behavior)}</div>`;
   if(c.intake){
-    h+=`<details class="intake"><summary>▸ 展开打卡明细（供判断个性化用）</summary>`;
-    if(c.intake.count) h+=`<div class="icount">${escapeHtml(c.intake.count)}</div>`;
-    if(c.intake.days&&c.intake.days.length){
-      h+=`<ul class="idays">`;
-      for(const dd of c.intake.days){ h+=`<li>${escapeHtml(dd)}</li>`; }
-      h+=`</ul>`;
-      if(c.intake.more>0) h+=`<div class="imore">……另有 ${c.intake.more} 个打卡日从略</div>`;
-    }
-    if(c.intake.pattern) h+=`<div class="ipat">${escapeHtml(c.intake.pattern)}</div>`;
-    if(c.intake.sport) h+=`<div class="ipat">运动：${escapeHtml(c.intake.sport)}</div>`;
-    h+=`</details>`;
+    const p=[];
+    if(c.intake.top_foods&&c.intake.top_foods.length) p.push('常吃：'+c.intake.top_foods.join('、'));
+    if(c.intake.avg_kcal) p.push('打卡日均约 '+c.intake.avg_kcal+' 千卡');
+    if(c.intake.sport) p.push('运动：'+c.intake.sport);
+    if(p.length) h+=`<div class="cbeh">打卡汇总——${escapeHtml(p.join('；'))}</div>`;
   }
   h+=`</div>`;
   h+=`<div class="pair">${reportCard(c,'A')}${reportCard(c,'B')}</div>`;
