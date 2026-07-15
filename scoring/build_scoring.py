@@ -57,11 +57,12 @@ button.big{padding:11px 24px;font-size:15px}
 button:disabled{opacity:.4;cursor:not-allowed}
 .err{color:#b00020;font-size:13px;margin-top:8px}
 /* 评分区 */
-header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:9px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-header h1{font-size:15px;margin:0}
-.who{font-size:13px;color:var(--muted)}
-.progress{margin-left:auto;color:var(--muted);font-size:13px}
+header{position:sticky;top:0;z-index:5;background:#14335c;color:#fff;padding:11px 18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header h1{font-size:16px;margin:0;color:#fff}
+.who{font-size:13px;color:#cdd8ea}
+.progress{margin-left:auto;color:#cdd8ea;font-size:13px}
 main{max-width:1560px;margin:0 auto;padding:12px 12px 76px}
+.sectitle{background:#14335c;color:#fff;font-weight:600;font-size:13px;padding:7px 12px;border-radius:8px;margin-bottom:8px}
 .context{background:#f0f4ff;border:1px solid #d6e0ff;border-radius:10px;padding:10px 12px;white-space:pre-wrap;margin-bottom:10px;font-size:12.5px}
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:820px){.pair{grid-template-columns:1fr}}
@@ -113,13 +114,11 @@ textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;f
 </header>
 <main id="app" style="display:none"><div id="casebox"></div></main>
 <div class="bar" id="bar" style="display:none">
-  <button id="prevbtn" onclick="nav(-1)">← 上一例</button>
-  <span class="tag" id="counter"></span>
-  <button id="nextbtn" onclick="nav(1)">下一例 →</button>
   <span style="flex:1"></span>
-  <span class="tag">本机自动暂存</span>
-  <button onclick="exportCsv()">导出 CSV</button>
-  <button class="primary" id="submitbtn" onclick="submitToServer()" style="display:none">提交评分</button>
+  <button id="prevbtn" onclick="nav(-1)">← 上一例</button>
+  <span class="tag" id="counter" style="min-width:120px;text-align:center"></span>
+  <button id="nextbtn" onclick="nav(1)">下一例 →</button>
+  <span style="flex:1;text-align:right"><button class="primary" id="submitbtn" onclick="submitToServer()" style="display:none">提交评分</button></span>
 </div>
 
 <script>
@@ -170,7 +169,7 @@ function reportCard(c, side){
 }
 function render(){
   const c=CASES[idx]; const d=load(); const e=d[c.case_id]||{};
-  let h=`<div class="context">${escapeHtml(c.context)}</div>`;
+  let h=`<div class="sectitle">受试者数据</div><div class="context">${escapeHtml(c.context)}</div>`;
   h+=`<div class="pair">${reportCard(c,'A')}${reportCard(c,'B')}</div>`;
   h+=`<div class="pref"><b>若只能发一份给这位患者，您更倾向哪一份？</b><div class="scale">`;
   for(const [v,lb] of [['A','报告A更好'],['tie','两份相当'],['B','报告B更好']]){
