@@ -38,6 +38,7 @@ main{max-width:1560px;margin:0 auto;padding:12px 12px 76px}
 .idays{margin:4px 0;padding-left:18px;line-height:1.6}
 .imore,.ipat{color:var(--muted);margin-top:3px}
 .mcap{font-size:13px;color:var(--muted);margin:2px 0 4px}
+.icap{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5}
 .mtbl{border-collapse:collapse;margin:4px 0;font-size:14px;background:#fff;border:1px solid #d6e0ff;border-radius:8px;overflow:hidden}
 .mtbl th,.mtbl td{padding:6px 16px;border-bottom:1px solid #eef2fb;text-align:center}
 .mtbl tr:last-child td{border-bottom:none}
@@ -158,7 +159,10 @@ function render(){
     h+=`</tbody></table>`;
   } else { h+=`<div style="white-space:pre-wrap">${escapeHtml(c.context)}</div>`; }
   if(c.behavior) h+=`<div class="cbeh">${escapeHtml(c.behavior)}</div>`;
-  if(c.intake&&c.intake.summary) h+=`<div class="cbeh">打卡汇总——${escapeHtml(c.intake.summary)}</div>`;
+  if(c.intake&&c.intake.summary){
+    h+=`<div class="icap">以下为患者自我打卡的汇总（常吃食物、日均热量、常做运动）；打卡为患者自报，仅覆盖部分日期与餐次、非全天真实摄入，热量为 App 估算，仅供参考。</div>`;
+    h+=`<div class="cbeh">打卡汇总——${escapeHtml(c.intake.summary)}</div>`;
+  }
   h+=`</div>`;
   h+=`<div class="pair">${reportCard(c,'A')}${reportCard(c,'B')}</div>`;
   h+=`<div class="pref"><b>若只能发一份给这位患者，您更倾向哪一份？</b><div class="scale">`;
